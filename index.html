@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>SVG Pixel Editor</title>
+    <style>
+      body {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        font-family: Arial, sans-serif;
+        background-color: #f0f0f0;
+        margin: 0;
+        padding: 20px;
+      }
+      .tools {
+        margin: 20px;
+        padding: 20px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+      }
+      #grid {
+        border: 2px solid #666;
+        background: rgba(255, 255, 255, 0.082);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+      }
+      button,
+      input,
+      select {
+        padding: 8px 16px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      button.active {
+        background: #4caf50;
+        color: white;
+      }
+      .tool-button {
+        min-width: 80px;
+      }
+      .grid-controls {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+      .grid-controls input {
+        width: 60px;
+        text-align: center;
+      }
+      .color-control {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .color-preview {
+        width: 30px;
+        height: 30px;
+        border: 2px solid #ddd;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      #colorPicker {
+        padding: 2px 5px;
+        block-size: 34px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="tools">
+      <button class="tool-button" id="pencilBtn" onclick="setTool('pencil')">
+        ✏️ Pencil
+      </button>
+      <button class="tool-button" id="eraserBtn" onclick="setTool('eraser')">
+        🧽 Eraser
+      </button>
+
+      <div class="color-control">
+        <input type="color" id="colorPicker" value="#000000" />
+      </div>
+
+      <div class="grid-controls">
+        Grid:
+        <select id="gridSize" onchange="updateGridSize()">
+          <option value="16">16x16</option>
+          <option value="32">32x32</option>
+          <option value="64">64x64</option>
+          <option value="custom">Custom</option>
+        </select>
+        <input
+          type="number"
+          id="customSize"
+          min="8"
+          max="128"
+          style="display: none"
+        />
+        <button onclick="toggleGrid()" id="gridToggle">🔲 Hide Grid</button>
+      </div>
+
+      <button onclick="saveSVG()">💾 Save SVG</button>
+    </div>
+    <svg id="grid"></svg>
+
+    <script>
+      let currentColor = "#000000";
+      let gridSize = 16;
+      const cellSize = 20;
+      let isDrawing = false;
+      let currentTool = "pencil";
+      let showGrid = true;
+      let hoveredCell = null;
+
+      function setTool(tool) {
+        currentTool = tool;
+        document
+          .getElementById("pencilBtn")
+          .classList.toggle("active", tool === "pencil");
+        document
+          .getElementById("eraserBtn")
+          .classList.toggle("active", tool === "eraser");
+
+        if (tool === "pencil") {
+          document.getElementById("colorPicker").value = currentColor;
+        }
+      }
+
+      function toggleGrid() {
+        showGrid = !showGrid;
+        const gridButton = document.getElementById("gridToggle");
+        gridButton.textContent = showGrid ? "🔲 Hide Grid" : "🔳 Show Grid";
+        updateGridVisibility();
+      }
+
+      function updateGridVisibility() {
+        const rects = document.querySelectorAll("#grid rect");
+        rects.forEach((rect) => {
+          rect.setAttribute("stroke", showGrid ? "#e0e0e0" : "none");
+        });
+      }
+
+      function updateGridSize() {
+        const select = document.getElementById("gridSize");
+        const customInput = document.getElementById("customSize");
+
+        if (select.value === "custom") {
+          customInput.style.display = "inline-block";
+          gridSize = parseInt(customInput.value) || 16;
+        } else {
+          customInput.style.display = "none";
+          gridSize = parseInt(select.value);
+        }
+        createGrid();
+      }
+
+      function createGrid() {
+        const svg = document.getElementById("grid");
+
+        svg.innerHTML = "";
+
+        const size = gridSize * cellSize;
+        svg.setAttribute("viewBox", `0 0 ${size} ${size}`);
+        svg.setAttribute("width", size);
+        svg.setAttribute("height", size);
+
+        for (let y = 0; y < gridSize; y++) {
+          for (let x = 0; x < gridSize; x++) {
+            const rect = document.createElementNS(
+              "http://www.w3.org/2000/svg",
+              "rect"
+            );
+            rect.setAttribute("x", x * cellSize);
+            rect.setAttribute("y", y * cellSize);
+            rect.setAttribute("width", cellSize);
+            rect.setAttribute("height", cellSize);
+            rect.setAttribute("fill", "#ffffff00");
+            rect.setAttribute("stroke", showGrid ? "#e0e0e0" : "none");
+            rect.setAttribute("stroke-width", "0.5");
+
+            rect.addEventListener("mousedown", () => startDrawing(rect));
+            rect.addEventListener("mouseover", () => handleHover(rect));
+            rect.addEventListener("mouseout", () => handleHoverEnd(rect));
+            rect.addEventListener("mouseup", stopDrawing);
+
+            svg.appendChild(rect);
+          }
+        }
+      }
+
+      function startDrawing(rect) {
+        isDrawing = true;
+        draw(rect);
+      }
+
+      function draw(rect) {
+        if (isDrawing) {
+          if (currentTool === "pencil") {
+            rect.setAttribute("fill", currentColor);
+          } else if (currentTool === "eraser") {
+            rect.setAttribute("fill", "#ffffff00");
+          }
+        }
+      }
+
+      function handleHover(rect) {
+        if (hoveredCell) {
+          hoveredCell.setAttribute("stroke", showGrid ? "#e0e0e0" : "none");
+        }
+        rect.setAttribute("stroke", "#4191fb");
+        hoveredCell = rect;
+        if (isDrawing) {
+          draw(rect);
+        }
+      }
+
+      function handleHoverEnd(rect) {
+        rect.setAttribute("stroke", showGrid ? "#e0e0e0" : "none");
+        hoveredCell = null;
+      }
+
+      function stopDrawing() {
+        isDrawing = false;
+      }
+
+      function saveSVG() {
+        const svgElement = document.getElementById("grid");
+        const clone = svgElement.cloneNode(true);
+
+        const rects = clone.querySelectorAll("rect");
+        rects.forEach((rect) => {
+          rect.removeAttribute("stroke");
+        });
+
+        const serializer = new XMLSerializer();
+        const svgString = serializer.serializeToString(clone);
+
+        const blob = new Blob([svgString], { type: "image/svg+xml" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `pixel-art-${Date.now()}.svg`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+
+      document.getElementById("colorPicker").addEventListener("input", (e) => {
+        currentColor = e.target.value;
+      });
+
+      document.addEventListener("DOMContentLoaded", () => {
+        createGrid();
+        setTool("pencil");
+
+        document.getElementById("customSize").addEventListener("input", (e) => {
+          const value = Math.min(Math.max(e.target.value, 8), 128);
+          e.target.value = value;
+          gridSize = value;
+          createGrid();
+        });
+      });
+    </script>
+  </body>
+</html>
