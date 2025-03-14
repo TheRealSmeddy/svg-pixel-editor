@@ -1,6 +1,7 @@
 # SVG Pixel Editor
 
 A lightweight, browser-based pixel art editor that allows you to create and export SVG images. Perfect for creating pixel art, icons, or small graphics.
+https://therealsmeddy.github.io/svg-pixel-editor/
 
 ![SVG Pixel Editor Screenshot](screenshot.png)
 
